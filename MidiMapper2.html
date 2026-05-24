@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vantage Data Systems - Organ Compiler</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi"></script>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background-color: #121212; color: #00ffcc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background-color: #1e1e1e; padding: 20px; border: 1px solid #00ffcc; border-radius: 8px; max-width: 900px; width: 100%; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        h1 { margin-top: 0; font-size: 1.5em; border-bottom: 1px solid #333; padding-bottom: 10px; text-align: center; }
+        h3 { color: #ffaa00; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; font-size: 1.1em;}
+        .form-group { margin-bottom: 10px; }
+        label { display: block; font-weight: bold; margin-bottom: 3px; font-size: 0.9em; }
+        input[type="number"], input[type="text"], input[type="file"] { width: 100%; padding: 6px; background: #2a2a2a; color: white; border: 1px solid #555; box-sizing: border-box; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 15px;}
+        button { background-color: #00ffcc; color: #121212; border: none; padding: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1.2em; margin-top: 15px; }
+        button:hover { background-color: #00ccaa; }
+        textarea { width: 100%; height: 80px; margin-top: 5px; background: #2a2a2a; color: #00ffcc; border: 1px solid #555; padding: 10px; box-sizing: border-box; word-break: break-all; }
+        .status { margin-top: 10px; font-size: 1em; color: #ffaa00; font-weight: bold; text-align: center; }
+        .row { display: flex; gap: 15px; }
+        .row .form-group { flex: 1; }
+        
+        /* Updated Grid Layout for 3 Items */
+        .grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        
+        .debug-box { color: #ff5555; font-size: 0.85em; height: 100px; }
+        .panel { background: #181818; padding: 15px; border: 1px solid #333; border-radius: 5px; }
+        .info-text { font-size: 0.8em; color: #888; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>VANTAGE DATA - 3-TRACK ORGAN COMPILER</h1>
+    
+    <div class="panel" style="margin-bottom: 15px;">
+        <div class="form-group"><label>Upload .mid File</label><input type="file" id="midiFile" accept=".mid,.midi"></div>
+        <div class="row">
+            <div class="form-group"><label>Master Tick Rate</label><input type="number" id="tickRate" value="0.05" step="0.01"></div>
+            <div class="checkbox-group" style="margin-top:20px;"><input type="checkbox" id="forceArticulations" checked><label>Force Re-strike for Repeated Notes</label></div>
+        </div>
+    </div>
+
+    <div class="grid-layout">
+        <div class="panel">
+            <h3 style="margin-top:0;">1. Shared Melody (37 Keys)</h3>
+            <div class="row">
+                <div class="form-group"><label>Channel</label><input type="number" id="melodyCh" value="4" min="1" max="16"></div>
+                <div class="form-group"><label>Start Note</label><input type="number" id="melodyStart" value="60"></div>
+            </div>
+            <div class="info-text">Controls both Glockenspiel & Unaphone based on active stops.</div>
+        </div>
+
+        <div class="panel">
+            <h3 style="margin-top:0;">2. Percussion (8 Instruments)</h3>
+            <div class="form-group"><label>Channel</label><input type="number" id="percCh" value="10" min="1" max="16"></div>
+            <div class="form-group">
+                <label>Mapped Notes</label>
+                <input type="text" id="percMap" value="35,38,40,57,64,76,81,85">
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3 style="margin-top:0;">3. Organ Stops & Swell</h3>
+            <div class="row">
+                <div class="form-group"><label>Stop ON CC#</label><input type="number" id="ccOn" value="81"></div>
+                <div class="form-group"><label>Stop OFF CC#</label><input type="number" id="ccOff" value="80"></div>
+                <div class="form-group"><label>Swell CC#</label><input type="number" id="ccSwell" value="4"></div>
+            </div>
+            <div class="info-text">Scans 23 stop values. Swell strictly looks for 127 (Open) and 64 or 0 (Closed).</div>
+        </div>
+    </div>
+
+    <button onclick="processMIDI()">COMPILE ALL TRACKS</button>
+    <div id="statusText" class="status">Waiting for file...</div>
+    
+    <label style="margin-top:10px; color:#ffaa00; font-size: 0.8em;">Stops & Swell Debug Log</label>
+    <textarea id="debugLog" class="debug-box" readonly></textarea>
+
+    <div class="grid-layout">
+        <div>
+            <label>MelodyData String (37 bits / tick)</label>
+            <textarea id="outMelody" readonly></textarea>
+        </div>
+        <div>
+            <label>PercData String (8 bits / tick)</label>
+            <textarea id="outPerc" readonly></textarea>
+        </div>
+        <div>
+            <label>StopsData String (24 bits / tick)</label>
+            <textarea id="outStops" readonly></textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+    const ORGAN_STOPS = [
+        // Accompaniment
+        { val: 70, name: "Open Flute" }, { val: 11, name: "Stopped Flute" }, { val: 48, name: "Strings 8" }, { val: 88, name: "Strings 4" },
+        // Trumpetmelody
+        { val: 68, name: "Baritone" }, { val: 56, name: "Trumpet" }, { val: 61, name: "Horn" }, { val: 42, name: "Cello" },
+        // Countermelody
+        { val: 8, name: "Glockenspiel" }, { val: 10, name: "Unaphone" }, { val: 19, name: "Prestant" }, { val: 20, name: "Celeste" }, 
+        { val: 71, name: "Clarinet" }, { val: 40, name: "Forte Violin" }, { val: 73, name: "Piccolo" }, { val: 75, name: "Flageolet" }, 
+        { val: 82, name: "Soft Violin" }, { val: 83, name: "Tibia" }, { val: 86, name: "Bourdon" }, { val: 87, name: "Flute" },
+        // Bass
+        { val: 57, name: "Trombone" }, { val: 50, name: "Tuba" }, { val: 58, name: "Bass Flute" }
+    ];
+
+    async function processMIDI() {
+        const fileInput = document.getElementById('midiFile');
+        const statusText = document.getElementById('statusText');
+        const debugBox = document.getElementById('debugLog');
+        
+        if (!fileInput.files.length) { statusText.innerText = "Error: Please upload a MIDI file first."; return; }
+
+        statusText.innerText = "Compiling...";
+        debugBox.value = "";
+        
+        const tickRate = parseFloat(document.getElementById('tickRate').value);
+        const forceArticulations = document.getElementById('forceArticulations').checked;
+        
+        const melodyCh = parseInt(document.getElementById('melodyCh').value) - 1; 
+        const melodyStart = parseInt(document.getElementById('melodyStart').value);
+        
+        const percCh = parseInt(document.getElementById('percCh').value) - 1; 
+        const percMap = document.getElementById('percMap').value.split(',').map(Number);
+        
+        const ccOffNum = parseInt(document.getElementById('ccOff').value);
+        const ccOnNum = parseInt(document.getElementById('ccOn').value);
+        const ccSwellNum = parseInt(document.getElementById('ccSwell').value);
+
+        try {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const midi = new Midi(e.target.result);
+                
+                let melodyNotes = [];
+                let percNotes = [];
+
+                midi.tracks.forEach(track => {
+                    if (track.channel === melodyCh) melodyNotes = melodyNotes.concat(track.notes);
+                    if (track.channel === percCh) percNotes = percNotes.concat(track.notes);
+                });
+
+                let stopChanges = [];
+                let swellChanges = [];
+                let debugText = `Scanning tracks for Organ Stops & Swell...\n`;
+                
+                midi.tracks.forEach((track, index) => {
+                    if (track.controlChanges[ccOffNum]) {
+                        track.controlChanges[ccOffNum].forEach(cc => {
+                            let rawValue = Math.round(cc.value * 127); 
+                            let stopIndex = ORGAN_STOPS.findIndex(s => s.val === rawValue);
+                            if (stopIndex !== -1) {
+                                debugText += `Time: ${cc.time.toFixed(2)}s | Stop OFF | ${ORGAN_STOPS[stopIndex].name} (Val: ${rawValue})\n`;
+                                stopChanges.push({time: cc.time, stopIndex: stopIndex, isOn: false});
+                            }
+                        });
+                    }
+                    if (track.controlChanges[ccOnNum]) {
+                        track.controlChanges[ccOnNum].forEach(cc => {
+                            let rawValue = Math.round(cc.value * 127);
+                            let stopIndex = ORGAN_STOPS.findIndex(s => s.val === rawValue);
+                            if (stopIndex !== -1) {
+                                debugText += `Time: ${cc.time.toFixed(2)}s | Stop ON  | ${ORGAN_STOPS[stopIndex].name} (Val: ${rawValue})\n`;
+                                stopChanges.push({time: cc.time, stopIndex: stopIndex, isOn: true});
+                            }
+                        });
+                    }
+                    
+                    // NEW STRICT SWELL LOGIC
+                    if (track.controlChanges[ccSwellNum]) {
+                        track.controlChanges[ccSwellNum].forEach(cc => {
+                            let rawValue = Math.round(cc.value * 127);
+                            if (rawValue === 127) {
+                                debugText += `Time: ${cc.time.toFixed(2)}s | Swell CC | OPEN (Val: ${rawValue})\n`;
+                                swellChanges.push({time: cc.time, isOpen: true});
+                            } else if (rawValue === 64 || rawValue === 0) {
+                                debugText += `Time: ${cc.time.toFixed(2)}s | Swell CC | CLOSED (Val: ${rawValue})\n`;
+                                swellChanges.push({time: cc.time, isOpen: false});
+                            }
+                        });
+                    }
+                });
+                
+                stopChanges.sort((a, b) => a.time - b.time);
+                swellChanges.sort((a, b) => a.time - b.time);
+                debugBox.value = debugText;
+
+                const duration = midi.duration;
+                const totalTicks = Math.ceil(duration / tickRate);
+                
+                let tMelody = Array(37).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
+                let tPerc = Array(percMap.length).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
+                
+                let tStops = Array(23).fill(null).map(() => Array(totalTicks).fill(false)); 
+                let tSwell = Array(totalTicks).fill(false); 
+
+                let currentStopStates = Array(23).fill(false); 
+                
+                for (let t = 0; t < totalTicks; t++) {
+                    const tickStart = t * tickRate;
+                    const tickEnd = tickStart + tickRate;
+
+                    for (let s of stopChanges) {
+                        if (s.time <= tickStart) currentStopStates[s.stopIndex] = s.isOn; else break;
+                    }
+                    for (let i = 0; i < 23; i++) {
+                        tStops[i][t] = currentStopStates[i];
+                    }
+
+                    let isSwellOpen = false; 
+                    let recentSwell = null;
+                    for (let s of swellChanges) {
+                        if (s.time <= tickStart) recentSwell = s; else break;
+                    }
+                    if (recentSwell !== null) isSwellOpen = recentSwell.isOpen;
+                    tSwell[t] = isSwellOpen;
+
+                    for (let i = 0; i < 37; i++) {
+                        const pitch = melodyStart + i;
+                        for (let note of melodyNotes) {
+                            if (note.midi === pitch && note.time < tickEnd && (note.time + note.duration) > tickStart) {
+                                tMelody[i][t].active = true;
+                                if (note.time >= tickStart && note.time < tickEnd) tMelody[i][t].attack = true;
+                            }
+                        }
+                    }
+
+                    for (let i = 0; i < percMap.length; i++) {
+                        const pitch = percMap[i];
+                        for (let note of percNotes) {
+                            if (note.midi === pitch && note.time < tickEnd && (note.time + note.duration) > tickStart) {
+                                tPerc[i][t].active = true;
+                                if (note.time >= tickStart && note.time < tickEnd) tPerc[i][t].attack = true;
+                            }
+                        }
+                    }
+                }
+
+                if (forceArticulations) {
+                    for (let t = 1; t < totalTicks; t++) {
+                        for (let i = 0; i < 37; i++) {
+                            if (tMelody[i][t].attack && tMelody[i][t-1].active) tMelody[i][t-1].active = false;
+                        }
+                        for (let i = 0; i < percMap.length; i++) {
+                            if (tPerc[i][t].attack && tPerc[i][t-1].active) tPerc[i][t-1].active = false;
+                        }
+                    }
+                }
+
+                let strMelody = "", strPerc = "", strStops = "";
+                for (let t = 0; t < totalTicks; t++) {
+                    for (let i = 0; i < 37; i++) strMelody += tMelody[i][t].active ? "1" : "0";
+                    for (let i = 0; i < percMap.length; i++) strPerc += tPerc[i][t].active ? "1" : "0";
+                    
+                    for (let i = 0; i < 23; i++) strStops += tStops[i][t] ? "1" : "0";
+                    strStops += tSwell[t] ? "1" : "0";
+                }
+
+                document.getElementById('outMelody').value = bitsToBase64(strMelody);
+                document.getElementById('outPerc').value = bitsToBase64(strPerc);
+                document.getElementById('outStops').value = bitsToBase64(strStops);
+                
+                statusText.innerText = "Success! Generated Shared Melody, Percussion, and Stops data.";
+            };
+            
+            reader.readAsArrayBuffer(file);
+            
+        } catch (err) { statusText.innerText = "Error: " + err.message; }
+    }
+
+    function bitsToBase64(bitStr) {
+        const b64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        let b64 = "";
+        while (bitStr.length % 6 !== 0) { bitStr += "0"; }
+        for (let i = 0; i < bitStr.length; i += 6) {
+            b64 += b64Chars[parseInt(bitStr.substring(i, i + 6), 2)];
+        }
+        while (b64.length % 4 !== 0) { b64 += "="; }
+        return b64;
+    }
+</script>
+</body>
+</html>
