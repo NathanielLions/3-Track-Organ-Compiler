@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi"></script>
     <style>
         body { font-family: 'Courier New', Courier, monospace; background-color: #121212; color: #00ffcc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background-color: #1e1e1e; padding: 20px; border: 1px solid #00ffcc; border-radius: 8px; max-width: 900px; width: 100%; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+        .container { background-color: #1e1e1e; padding: 20px; border: 1px solid #00ffcc; border-radius: 8px; max-width: 1100px; width: 100%; box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
         h1 { margin-top: 0; font-size: 1.5em; border-bottom: 1px solid #333; padding-bottom: 10px; text-align: center; }
         h3 { color: #ffaa00; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; font-size: 1.1em;}
         .form-group { margin-bottom: 10px; }
@@ -21,8 +21,8 @@
         .row { display: flex; gap: 15px; }
         .row .form-group { flex: 1; }
         
-        /* Updated Grid Layout for 3 Items */
-        .grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .output-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         
         .debug-box { color: #ff5555; font-size: 0.85em; height: 100px; }
         .panel { background: #181818; padding: 15px; border: 1px solid #333; border-radius: 5px; }
@@ -32,7 +32,7 @@
 <body>
 
 <div class="container">
-    <h1>VANTAGE DATA - 3-TRACK ORGAN COMPILER</h1>
+    <h1>VANTAGE DATA - 5-TRACK ORGAN COMPILER</h1>
     
     <div class="panel" style="margin-bottom: 15px;">
         <div class="form-group"><label>Upload .mid File</label><input type="file" id="midiFile" accept=".mid,.midi"></div>
@@ -44,31 +44,57 @@
 
     <div class="grid-layout">
         <div class="panel">
-            <h3 style="margin-top:0;">1. Shared Melody (37 Keys)</h3>
+            <h3 style="margin-top:0;">1. Countermelody (31 Keys)</h3>
             <div class="row">
-                <div class="form-group"><label>Channel</label><input type="number" id="melodyCh" value="4" min="1" max="16"></div>
-                <div class="form-group"><label>Start Note</label><input type="number" id="melodyStart" value="60"></div>
+                <div class="form-group"><label>Channel</label><input type="number" id="counterMelodyCh" value="4" min="1" max="16"></div>
+                <div class="form-group"><label>Organ Start Note</label><input type="number" id="counterMelodyStart" value="66"></div>
+                <div class="form-group"><label>Transpose MIDI</label><input type="number" id="counterMelodyTrans" value="0"></div>
             </div>
-            <div class="info-text">Controls both Glockenspiel & Unaphone based on active stops.</div>
+            <div class="info-text">Maps notes 66-96.</div>
         </div>
 
         <div class="panel">
-            <h3 style="margin-top:0;">2. Percussion (8 Instruments)</h3>
+            <h3 style="margin-top:0;">2. Trumpet Melody (18 Keys)</h3>
+            <div class="row">
+                <div class="form-group"><label>Channel</label><input type="number" id="trumpetCh" value="3" min="1" max="16"></div>
+                <div class="form-group"><label>Organ Start Note</label><input type="number" id="trumpetStart" value="52"></div>
+                <div class="form-group"><label>Transpose MIDI</label><input type="number" id="trumpetTrans" value="0"></div>
+            </div>
+            <div class="info-text">Maps notes 52-69.</div>
+        </div>
+
+        <div class="panel">
+            <h3 style="margin-top:0;">3. Bass & Accomp (29 Keys)</h3>
+            <div class="row">
+                <div class="form-group"><label>Bass Ch</label><input type="number" id="bassCh" value="4" min="1" max="16"></div>
+                <div class="form-group"><label>Organ Start Note</label><input type="number" id="bassStart" value="36"></div>
+                <div class="form-group"><label>Transpose MIDI</label><input type="number" id="bassTrans" value="0"></div>
+            </div>
+            <div class="row">
+                <div class="form-group"><label>Accomp Ch</label><input type="number" id="accompCh" value="2" min="1" max="16"></div>
+                <div class="form-group"><label>Organ Start Note</label><input type="number" id="accompStart" value="52"></div>
+                <div class="form-group"><label>Transpose MIDI</label><input type="number" id="accompTrans" value="0"></div>
+            </div>
+            <div class="info-text">Bass: 36-48 (13 notes). Accomp: 52-67 (16 notes).</div>
+        </div>
+
+        <div class="panel">
+            <h3 style="margin-top:0;">4. Percussion (8 Instruments)</h3>
             <div class="form-group"><label>Channel</label><input type="number" id="percCh" value="10" min="1" max="16"></div>
             <div class="form-group">
-                <label>Mapped Notes</label>
+                <label>Mapped Notes (No Transpose)</label>
                 <input type="text" id="percMap" value="35,38,40,57,64,76,81,85">
             </div>
         </div>
 
         <div class="panel">
-            <h3 style="margin-top:0;">3. Organ Stops & Swell</h3>
+            <h3 style="margin-top:0;">5. Organ Stops & Swell</h3>
             <div class="row">
                 <div class="form-group"><label>Stop ON CC#</label><input type="number" id="ccOn" value="81"></div>
                 <div class="form-group"><label>Stop OFF CC#</label><input type="number" id="ccOff" value="80"></div>
                 <div class="form-group"><label>Swell CC#</label><input type="number" id="ccSwell" value="4"></div>
             </div>
-            <div class="info-text">Scans 23 stop values. Swell strictly looks for 127 (Open) and 64 or 0 (Closed).</div>
+            <div class="info-text">Scans 23 stop values. Swell specifically looks for 127 and 64/0.</div>
         </div>
     </div>
 
@@ -78,19 +104,12 @@
     <label style="margin-top:10px; color:#ffaa00; font-size: 0.8em;">Stops & Swell Debug Log</label>
     <textarea id="debugLog" class="debug-box" readonly></textarea>
 
-    <div class="grid-layout">
-        <div>
-            <label>MelodyData String (37 bits / tick)</label>
-            <textarea id="outMelody" readonly></textarea>
-        </div>
-        <div>
-            <label>PercData String (8 bits / tick)</label>
-            <textarea id="outPerc" readonly></textarea>
-        </div>
-        <div>
-            <label>StopsData String (24 bits / tick)</label>
-            <textarea id="outStops" readonly></textarea>
-        </div>
+    <div class="output-layout">
+        <div><label>CounterMelody (31 bits)</label><textarea id="outCounterMelody" readonly></textarea></div>
+        <div><label>TrumpetMelody (18 bits)</label><textarea id="outTrumpet" readonly></textarea></div>
+        <div><label>BassAccomp (29 bits)</label><textarea id="outBassAccomp" readonly></textarea></div>
+        <div><label>Percussion (8 bits)</label><textarea id="outPerc" readonly></textarea></div>
+        <div><label>Stops (24 bits)</label><textarea id="outStops" readonly></textarea></div>
     </div>
 </div>
 
@@ -121,9 +140,23 @@
         const tickRate = parseFloat(document.getElementById('tickRate').value);
         const forceArticulations = document.getElementById('forceArticulations').checked;
         
-        const melodyCh = parseInt(document.getElementById('melodyCh').value) - 1; 
-        const melodyStart = parseInt(document.getElementById('melodyStart').value);
+        // Track Settings
+        const counterMelodyCh = parseInt(document.getElementById('counterMelodyCh').value) - 1; 
+        const counterMelodyStart = parseInt(document.getElementById('counterMelodyStart').value);
+        const counterMelodyTrans = parseInt(document.getElementById('counterMelodyTrans').value) || 0;
         
+        const trumpetCh = parseInt(document.getElementById('trumpetCh').value) - 1; 
+        const trumpetStart = parseInt(document.getElementById('trumpetStart').value);
+        const trumpetTrans = parseInt(document.getElementById('trumpetTrans').value) || 0;
+
+        const bassCh = parseInt(document.getElementById('bassCh').value) - 1;
+        const bassStart = parseInt(document.getElementById('bassStart').value);
+        const bassTrans = parseInt(document.getElementById('bassTrans').value) || 0;
+        
+        const accompCh = parseInt(document.getElementById('accompCh').value) - 1;
+        const accompStart = parseInt(document.getElementById('accompStart').value);
+        const accompTrans = parseInt(document.getElementById('accompTrans').value) || 0;
+
         const percCh = parseInt(document.getElementById('percCh').value) - 1; 
         const percMap = document.getElementById('percMap').value.split(',').map(Number);
         
@@ -138,11 +171,17 @@
             reader.onload = function(e) {
                 const midi = new Midi(e.target.result);
                 
-                let melodyNotes = [];
+                let counterMelodyNotes = [];
+                let trumpetNotes = [];
+                let bassNotes = [];
+                let accompNotes = [];
                 let percNotes = [];
 
                 midi.tracks.forEach(track => {
-                    if (track.channel === melodyCh) melodyNotes = melodyNotes.concat(track.notes);
+                    if (track.channel === counterMelodyCh) counterMelodyNotes = counterMelodyNotes.concat(track.notes);
+                    if (track.channel === trumpetCh) trumpetNotes = trumpetNotes.concat(track.notes);
+                    if (track.channel === bassCh) bassNotes = bassNotes.concat(track.notes);
+                    if (track.channel === accompCh) accompNotes = accompNotes.concat(track.notes);
                     if (track.channel === percCh) percNotes = percNotes.concat(track.notes);
                 });
 
@@ -150,7 +189,7 @@
                 let swellChanges = [];
                 let debugText = `Scanning tracks for Organ Stops & Swell...\n`;
                 
-                midi.tracks.forEach((track, index) => {
+                midi.tracks.forEach((track) => {
                     if (track.controlChanges[ccOffNum]) {
                         track.controlChanges[ccOffNum].forEach(cc => {
                             let rawValue = Math.round(cc.value * 127); 
@@ -172,7 +211,6 @@
                         });
                     }
                     
-                    // NEW STRICT SWELL LOGIC
                     if (track.controlChanges[ccSwellNum]) {
                         track.controlChanges[ccSwellNum].forEach(cc => {
                             let rawValue = Math.round(cc.value * 127);
@@ -194,7 +232,10 @@
                 const duration = midi.duration;
                 const totalTicks = Math.ceil(duration / tickRate);
                 
-                let tMelody = Array(37).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
+                // Track Arrays initialization (Updated Sizes)
+                let tCounterMelody = Array(31).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
+                let tTrumpet = Array(18).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
+                let tBassAccomp = Array(29).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
                 let tPerc = Array(percMap.length).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
                 
                 let tStops = Array(23).fill(null).map(() => Array(totalTicks).fill(false)); 
@@ -209,9 +250,7 @@
                     for (let s of stopChanges) {
                         if (s.time <= tickStart) currentStopStates[s.stopIndex] = s.isOn; else break;
                     }
-                    for (let i = 0; i < 23; i++) {
-                        tStops[i][t] = currentStopStates[i];
-                    }
+                    for (let i = 0; i < 23; i++) tStops[i][t] = currentStopStates[i];
 
                     let isSwellOpen = false; 
                     let recentSwell = null;
@@ -221,16 +260,44 @@
                     if (recentSwell !== null) isSwellOpen = recentSwell.isOpen;
                     tSwell[t] = isSwellOpen;
 
-                    for (let i = 0; i < 37; i++) {
-                        const pitch = melodyStart + i;
-                        for (let note of melodyNotes) {
-                            if (note.midi === pitch && note.time < tickEnd && (note.time + note.duration) > tickStart) {
-                                tMelody[i][t].active = true;
-                                if (note.time >= tickStart && note.time < tickEnd) tMelody[i][t].attack = true;
+                    // CounterMelody Processing (31 Keys)
+                    for (let i = 0; i < 31; i++) {
+                        const organTargetPitch = counterMelodyStart + i;
+                        for (let note of counterMelodyNotes) {
+                            if ((note.midi + counterMelodyTrans) === organTargetPitch && note.time < tickEnd && (note.time + note.duration) > tickStart) {
+                                tCounterMelody[i][t].active = true;
+                                if (note.time >= tickStart && note.time < tickEnd) tCounterMelody[i][t].attack = true;
                             }
                         }
                     }
 
+                    // Trumpet Processing (18 Keys)
+                    for (let i = 0; i < 18; i++) {
+                        const organTargetPitch = trumpetStart + i;
+                        for (let note of trumpetNotes) {
+                            if ((note.midi + trumpetTrans) === organTargetPitch && note.time < tickEnd && (note.time + note.duration) > tickStart) {
+                                tTrumpet[i][t].active = true;
+                                if (note.time >= tickStart && note.time < tickEnd) tTrumpet[i][t].attack = true;
+                            }
+                        }
+                    }
+
+                    // Bass & Accomp Processing (29 Keys combined)
+                    for (let i = 0; i < 29; i++) {
+                        const isBass = i < 13;
+                        const organTargetPitch = isBass ? (bassStart + i) : (accompStart + (i - 13));
+                        const targetNotes = isBass ? bassNotes : accompNotes;
+                        const transVal = isBass ? bassTrans : accompTrans;
+                        
+                        for (let note of targetNotes) {
+                            if ((note.midi + transVal) === organTargetPitch && note.time < tickEnd && (note.time + note.duration) > tickStart) {
+                                tBassAccomp[i][t].active = true;
+                                if (note.time >= tickStart && note.time < tickEnd) tBassAccomp[i][t].attack = true;
+                            }
+                        }
+                    }
+
+                    // Percussion Processing
                     for (let i = 0; i < percMap.length; i++) {
                         const pitch = percMap[i];
                         for (let note of percNotes) {
@@ -242,31 +309,35 @@
                     }
                 }
 
+                // Force Articulations
                 if (forceArticulations) {
                     for (let t = 1; t < totalTicks; t++) {
-                        for (let i = 0; i < 37; i++) {
-                            if (tMelody[i][t].attack && tMelody[i][t-1].active) tMelody[i][t-1].active = false;
-                        }
-                        for (let i = 0; i < percMap.length; i++) {
-                            if (tPerc[i][t].attack && tPerc[i][t-1].active) tPerc[i][t-1].active = false;
-                        }
+                        for (let i = 0; i < 31; i++) if (tCounterMelody[i][t].attack && tCounterMelody[i][t-1].active) tCounterMelody[i][t-1].active = false;
+                        for (let i = 0; i < 18; i++) if (tTrumpet[i][t].attack && tTrumpet[i][t-1].active) tTrumpet[i][t-1].active = false;
+                        for (let i = 0; i < 29; i++) if (tBassAccomp[i][t].attack && tBassAccomp[i][t-1].active) tBassAccomp[i][t-1].active = false;
+                        for (let i = 0; i < percMap.length; i++) if (tPerc[i][t].attack && tPerc[i][t-1].active) tPerc[i][t-1].active = false;
                     }
                 }
 
-                let strMelody = "", strPerc = "", strStops = "";
+                // String Generation
+                let strCounterMelody = "", strTrumpet = "", strBassAccomp = "", strPerc = "", strStops = "";
                 for (let t = 0; t < totalTicks; t++) {
-                    for (let i = 0; i < 37; i++) strMelody += tMelody[i][t].active ? "1" : "0";
+                    for (let i = 0; i < 31; i++) strCounterMelody += tCounterMelody[i][t].active ? "1" : "0";
+                    for (let i = 0; i < 18; i++) strTrumpet += tTrumpet[i][t].active ? "1" : "0";
+                    for (let i = 0; i < 29; i++) strBassAccomp += tBassAccomp[i][t].active ? "1" : "0";
                     for (let i = 0; i < percMap.length; i++) strPerc += tPerc[i][t].active ? "1" : "0";
                     
                     for (let i = 0; i < 23; i++) strStops += tStops[i][t] ? "1" : "0";
                     strStops += tSwell[t] ? "1" : "0";
                 }
 
-                document.getElementById('outMelody').value = bitsToBase64(strMelody);
+                document.getElementById('outCounterMelody').value = bitsToBase64(strCounterMelody);
+                document.getElementById('outTrumpet').value = bitsToBase64(strTrumpet);
+                document.getElementById('outBassAccomp').value = bitsToBase64(strBassAccomp);
                 document.getElementById('outPerc').value = bitsToBase64(strPerc);
                 document.getElementById('outStops').value = bitsToBase64(strStops);
                 
-                statusText.innerText = "Success! Generated Shared Melody, Percussion, and Stops data.";
+                statusText.innerText = "Success! Generated CounterMelody, Trumpet, BassAccomp, Percussion, and Stops data.";
             };
             
             reader.readAsArrayBuffer(file);
