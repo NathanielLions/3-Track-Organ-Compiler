@@ -44,13 +44,13 @@
 
     <div class="grid-layout">
         <div class="panel">
-            <h3 style="margin-top:0;">1. Countermelody (31 Keys)</h3>
+            <h3 style="margin-top:0;">1. Countermelody (37-Bit Width)</h3>
             <div class="row">
                 <div class="form-group"><label>Channel</label><input type="number" id="counterMelodyCh" value="4" min="1" max="16"></div>
                 <div class="form-group"><label>Organ Start Note</label><input type="number" id="counterMelodyStart" value="66"></div>
                 <div class="form-group"><label>Transpose MIDI</label><input type="number" id="counterMelodyTrans" value="0"></div>
             </div>
-            <div class="info-text">Maps notes 66-96.</div>
+            <div class="info-text">Maps notes 66-96 (31 keys). Top 6 bits remain 0 for structural alignment.</div>
         </div>
 
         <div class="panel">
@@ -105,7 +105,7 @@
     <textarea id="debugLog" class="debug-box" readonly></textarea>
 
     <div class="output-layout">
-        <div><label>CounterMelody (31 bits)</label><textarea id="outCounterMelody" readonly></textarea></div>
+        <div><label>CounterMelody (37 bits)</label><textarea id="outCounterMelody" readonly></textarea></div>
         <div><label>TrumpetMelody (18 bits)</label><textarea id="outTrumpet" readonly></textarea></div>
         <div><label>BassAccomp (29 bits)</label><textarea id="outBassAccomp" readonly></textarea></div>
         <div><label>Percussion (8 bits)</label><textarea id="outPerc" readonly></textarea></div>
@@ -232,8 +232,8 @@
                 const duration = midi.duration;
                 const totalTicks = Math.ceil(duration / tickRate);
                 
-                // Track Arrays initialization (Updated Sizes)
-                let tCounterMelody = Array(31).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
+                // FIXED: Restored to 37 bits to maintain structural alignment in Luau
+                let tCounterMelody = Array(37).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
                 let tTrumpet = Array(18).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
                 let tBassAccomp = Array(29).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
                 let tPerc = Array(percMap.length).fill(null).map(() => Array(totalTicks).fill(null).map(() => ({active: false, attack: false})));
@@ -260,8 +260,8 @@
                     if (recentSwell !== null) isSwellOpen = recentSwell.isOpen;
                     tSwell[t] = isSwellOpen;
 
-                    // CounterMelody Processing (31 Keys)
-                    for (let i = 0; i < 31; i++) {
+                    // CounterMelody Processing (Reads 37 Keys, mapped from 66 upward)
+                    for (let i = 0; i < 37; i++) {
                         const organTargetPitch = counterMelodyStart + i;
                         for (let note of counterMelodyNotes) {
                             if ((note.midi + counterMelodyTrans) === organTargetPitch && note.time < tickEnd && (note.time + note.duration) > tickStart) {
@@ -312,7 +312,7 @@
                 // Force Articulations
                 if (forceArticulations) {
                     for (let t = 1; t < totalTicks; t++) {
-                        for (let i = 0; i < 31; i++) if (tCounterMelody[i][t].attack && tCounterMelody[i][t-1].active) tCounterMelody[i][t-1].active = false;
+                        for (let i = 0; i < 37; i++) if (tCounterMelody[i][t].attack && tCounterMelody[i][t-1].active) tCounterMelody[i][t-1].active = false;
                         for (let i = 0; i < 18; i++) if (tTrumpet[i][t].attack && tTrumpet[i][t-1].active) tTrumpet[i][t-1].active = false;
                         for (let i = 0; i < 29; i++) if (tBassAccomp[i][t].attack && tBassAccomp[i][t-1].active) tBassAccomp[i][t-1].active = false;
                         for (let i = 0; i < percMap.length; i++) if (tPerc[i][t].attack && tPerc[i][t-1].active) tPerc[i][t-1].active = false;
@@ -322,7 +322,7 @@
                 // String Generation
                 let strCounterMelody = "", strTrumpet = "", strBassAccomp = "", strPerc = "", strStops = "";
                 for (let t = 0; t < totalTicks; t++) {
-                    for (let i = 0; i < 31; i++) strCounterMelody += tCounterMelody[i][t].active ? "1" : "0";
+                    for (let i = 0; i < 37; i++) strCounterMelody += tCounterMelody[i][t].active ? "1" : "0";
                     for (let i = 0; i < 18; i++) strTrumpet += tTrumpet[i][t].active ? "1" : "0";
                     for (let i = 0; i < 29; i++) strBassAccomp += tBassAccomp[i][t].active ? "1" : "0";
                     for (let i = 0; i < percMap.length; i++) strPerc += tPerc[i][t].active ? "1" : "0";
